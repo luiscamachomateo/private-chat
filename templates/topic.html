@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>{{ topic.name }}</h2>
+
+<div class="chatbox">
+  {% for m in msgs %}
+    <div class="msg">
+       <span class="who">{{ m.sender }}:</span>
+       <span class="txt">{{ m.body }}</span>
+       <span class="ts">{{ m.created.strftime('%H:%M %Y-%m-%d') }}</span>
+    </div>
+  {% endfor %}
+</div>
+
+<form class="send" method="post">
+    <input name="sender" placeholder="Your name (optional)">
+    <textarea name="body" rows="3" placeholder="Type message…"></textarea>
+    <button>Send</button>
+</form>
+{% endblock %}

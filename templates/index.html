@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="new">
+  <h2>Start a new topic</h2>
+  <form method="post">
+     <input name="topic" placeholder="e.g. AI learning" required>
+     <button>Create</button>
+  </form>
+</section>
+
+<section class="list">
+  <h2>Existing topics</h2>
+  {% if topics %}
+     <ul>
+     {% for t in topics %}
+        <li><a href="{{ url_for('topic', slug=t.slug) }}">{{ t.name }}</a> — {{ t.created.strftime('%Y-%m-%d %H:%M') }}</li>
+     {% endfor %}
+     </ul>
+  {% else %}
+     <p>No topics yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

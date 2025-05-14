@@ -1,0 +1,12 @@
+*{box-sizing:border-box;font-family:system-ui,Arial,sans-serif}
+body{margin:0;padding:0;max-width:900px;margin:auto;background:#111;color:#eee}
+header{padding:1rem;text-align:center;background:#222}
+h1,h2{margin:.5rem 0}
+a{color:#6cf;text-decoration:none}
+main{padding:1rem}
+.new input,.send input,.send textarea{width:100%;margin:.3rem 0;padding:.4rem;border-radius:6px;border:none}
+button{padding:.4rem 1.2rem;border:none;border-radius:6px;background:#6cf;color:#000;cursor:pointer}
+.chatbox{margin:1rem 0;max-height:70vh;overflow-y:auto;border:1px solid #333;padding:.6rem;border-radius:6px}
+.msg{margin:.3rem 0}
+.who{font-weight:bold;margin-right:.4rem;color:#fc0}
+.ts{font-size:.75rem;color:#888;margin-left:.6rem}
