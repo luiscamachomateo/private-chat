@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: private-chat
+    runtime: python
+    buildCommand: ""
+    startCommand: "python app.py"
