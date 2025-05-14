@@ -1,20 +1,32 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>{{ topic.name }}</h2>
+<a href="{{ url_for('delete_topic', slug=topic.slug) }}" onclick="return confirm('Delete this topic and all messages?')">🗑️ Delete topic</a>
 
 <div class="chatbox">
   {% for m in msgs %}
     <div class="msg">
-       <span class="who">{{ m.sender }}:</span>
-       <span class="txt">{{ m.body }}</span>
-       <span class="ts">{{ m.created.strftime('%H:%M %Y-%m-%d') }}</span>
+       <div class="header">
+         <span class="who">{{ m.sender }}:</span>
+         <span class="ts">{{ m.created.strftime('%H:%M %Y-%m-%d') }}</span>
+         <a class="del" href="{{ url_for('delete_message', id=m.id) }}" onclick="return confirm('Delete this message?')">❌</a>
+       </div>
+       <div class="txt">{{ m.body|safe }}</div>
+       {% if m.filename %}
+         {% if m.filename.endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
+            <img src="{{ url_for('uploaded_file', filename=m.filename) }}" width="200">
+         {% else %}
+            <a href="{{ url_for('uploaded_file', filename=m.filename) }}" target="_blank">📎 {{ m.filename }}</a>
+         {% endif %}
+       {% endif %}
     </div>
   {% endfor %}
 </div>
 
-<form class="send" method="post">
+<form class="send" method="post" enctype="multipart/form-data">
     <input name="sender" placeholder="Your name (optional)">
     <textarea name="body" rows="3" placeholder="Type message…"></textarea>
+    <input type="file" name="file">
     <button>Send</button>
 </form>
 {% endblock %}
