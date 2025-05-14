@@ -1,19 +1,141 @@
+* {
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+  margin: 0;
+  background-color: #121212;
+  color: #e0e0e0;
+  max-width: 900px;
+  margin: auto;
+  padding: 0 1rem;
+}
+
+header {
+  background-color: #1f1f1f;
+  padding: 1rem;
+  text-align: center;
+}
+
+header h1 a {
+  text-decoration: none;
+  color: #66ccff;
+  font-size: 2rem;
+}
+
+h2 {
+  margin-top: 1.2rem;
+  color: #66ccff;
+}
+
+a {
+  color: #66ccff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+main {
+  padding-bottom: 4rem;
+}
+
+form input,
+form textarea,
+form button,
+form select {
+  font-size: 1rem;
+  padding: 0.6rem;
+  margin: 0.4rem 0;
+  border: none;
+  border-radius: 8px;
+  width: 100%;
+}
+
+form input[type="file"] {
+  padding: 0.4rem;
+  background: #2a2a2a;
+  color: #ccc;
+}
+
+form button {
+  background-color: #66ccff;
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s ease-in-out;
+}
+
+form button:hover {
+  background-color: #33b5e5;
+}
+
+.chatbox {
+  margin-top: 1rem;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 1rem;
+  background-color: #1f1f1f;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
 .msg {
+  padding: 0.7rem;
   border-bottom: 1px solid #333;
-  padding: 0.5rem 0;
 }
-.msg img {
-  margin-top: 0.4rem;
-  max-width: 100%;
-  border-radius: 4px;
-}
+
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.del {
-  color: #f66;
-  text-decoration: none;
+
+.who {
+  font-weight: bold;
+  color: #ffcc66;
+}
+
+.ts {
+  font-size: 0.8rem;
+  color: #888;
   margin-left: 1rem;
+}
+
+.del {
+  font-size: 1rem;
+  color: #f66;
+  margin-left: 1rem;
+  text-decoration: none;
+}
+
+.txt {
+  margin: 0.4rem 0;
+  white-space: pre-wrap;
+}
+
+img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}
+
+ul {
+  padding-left: 1.2rem;
+}
+
+input[type="text"], textarea {
+  background-color: #2a2a2a;
+  color: #eee;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #888;
+}
+
+.send {
+  margin-top: 1rem;
 }
