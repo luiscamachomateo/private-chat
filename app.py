@@ -31,8 +31,10 @@ class Message(db.Model):
     created = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
-    db.create_all()
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    Message.__table__.drop(db.engine)  # Drops just the Message table
+    db.create_all()  # Recreates it with the new 'reactions' column
+
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
