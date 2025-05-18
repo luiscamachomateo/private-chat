@@ -1,7 +1,7 @@
 import os
 import secrets
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort, session
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 
@@ -11,6 +11,8 @@ app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 app.secret_key = secrets.token_hex(16)
+
+PASSWORD = "always_2bff"  # 🔐 Set your login password here
 
 db = SQLAlchemy(app)
 
@@ -36,8 +38,24 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        pw = request.form.get('password', '')
+        if pw == PASSWORD:
+            session['logged_in'] = True
+            return redirect(url_for('index'))
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
     if request.method == 'POST':
         name = request.form['topic'].strip()
         if name:
@@ -50,6 +68,8 @@ def index():
 
 @app.route('/t/<slug>', methods=['GET', 'POST'])
 def topic(slug):
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
     topic = Topic.query.filter_by(slug=slug).first()
     if not topic:
         abort(404)
@@ -73,6 +93,8 @@ def topic(slug):
 
 @app.route('/delete/message/<int:id>')
 def delete_message(id):
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
     msg = Message.query.get_or_404(id)
     if msg.filename:
         try:
@@ -85,6 +107,8 @@ def delete_message(id):
 
 @app.route('/delete/topic/<slug>')
 def delete_topic(slug):
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
     topic = Topic.query.filter_by(slug=slug).first_or_404()
     messages = Message.query.filter_by(topic_id=topic.id).all()
     for msg in messages:
