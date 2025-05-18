@@ -97,3 +97,54 @@ def uploaded_file(filename):
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000)
+
+@app.route('/delete/message/<int:id>')
+def delete_message(id):
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+    msg = Message.query.get_or_404(id)
+    if msg.filename:
+        try:
+            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], msg.filename))
+        except:
+            pass
+    db.session.delete(msg)
+    db.session.commit()
+    return redirect(request.referrer)
+
+@app.route('/delete/topic/<slug>')
+def delete_topic(slug):
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+    topic = Topic.query.filter_by(slug=slug).first_or_404()
+    messages = Message.query.filter_by(topic_id=topic.id).all()
+    for msg in messages:
+        if msg.filename:
+            try:
+                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], msg.filename))
+            except:
+                pass
+        db.session.delete(msg)
+    db.session.delete(topic)
+    db.session.commit()
+    return redirect(url_for('index'))
+
+@app.route('/t/<slug>/upload', methods=['POST'])
+def upload_file(slug):
+    if not session.get("logged_in"):
+        return redirect(url_for("login"))
+    topic = Topic.query.filter_by(slug=slug).first_or_404()
+    sender = request.form.get('sender', 'Anonymous').strip()
+    file = request.files.get('file')
+    filename = None
+
+    if file and '.' in file.filename:
+        ext = file.filename.rsplit('.', 1)[1].lower()
+        if ext in app.config['ALLOWED_EXTENSIONS']:
+            filename = secrets.token_hex(8) + '_' + secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            db.session.add(Message(topic_id=topic.id, sender=sender, body='', filename=filename))
+            db.session.commit()
+
+    return redirect(url_for('topic', slug=slug))
+
