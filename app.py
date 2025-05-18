@@ -16,7 +16,7 @@ app.secret_key = secrets.token_hex(16)
 db = SQLAlchemy(app)
 socketio = SocketIO(app, async_mode='eventlet')
 
-PASSWORD = "letmein"  # set your password
+PASSWORD = "letmein"  # Set your login password
 
 class Topic(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -72,32 +72,6 @@ def topic(slug):
     msgs = Message.query.filter_by(topic_id=topic.id).order_by(Message.created).all()
     return render_template('topic.html', topic=topic, msgs=msgs)
 
-@socketio.on('join')
-def handle_join(data):
-    join_room(data['room'])
-
-@socketio.on('send_message')
-def handle_send_message(data):
-    topic_id = data['topic_id']
-    sender = data['sender'].strip() or "Anonymous"
-    body = data['body'].strip()
-    if body:
-        msg = Message(topic_id=topic_id, sender=sender, body=body)
-        db.session.add(msg)
-        db.session.commit()
-        emit('new_message', {
-            'sender': sender,
-            'body': body,
-            'time': msg.created.strftime('%H:%M %Y-%m-%d')
-        }, room=data['room'])
-
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
-if __name__ == "__main__":
-    socketio.run(app, host="0.0.0.0", port=5000)
-
 @app.route('/delete/message/<int:id>')
 def delete_message(id):
     if not session.get("logged_in"):
@@ -148,3 +122,28 @@ def upload_file(slug):
 
     return redirect(url_for('topic', slug=slug))
 
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@socketio.on('join')
+def handle_join(data):
+    join_room(data['room'])
+
+@socketio.on('send_message')
+def handle_send_message(data):
+    topic_id = data['topic_id']
+    sender = data['sender'].strip() or "Anonymous"
+    body = data['body'].strip()
+    if body:
+        msg = Message(topic_id=topic_id, sender=sender, body=body)
+        db.session.add(msg)
+        db.session.commit()
+        emit('new_message', {
+            'sender': sender,
+            'body': body,
+            'time': msg.created.strftime('%H:%M %Y-%m-%d')
+        }, room=data['room'])
+
+if __name__ == "__main__":
+    socketio.run(app, host="0.0.0.0", port=5000)
