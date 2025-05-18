@@ -1,7 +1,7 @@
 import os
 import secrets
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort, session
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort, session, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
 import cloudinary
