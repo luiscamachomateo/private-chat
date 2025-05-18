@@ -36,7 +36,6 @@ class Message(db.Model):
     image_url = db.Column(db.String(500))
     created = db.Column(db.DateTime, default=datetime.utcnow)
 
-# 👇 One-time schema drop and recreate (destructive!)
 with app.app_context():
     db.create_all()
 
@@ -112,11 +111,20 @@ def handle_send_message(data):
     db.session.commit()
 
     emit('new_message', {
+        'id': msg.id,
         'sender': sender,
         'body': body,
         'image_url': image_url,
         'time': msg.created.strftime('%H:%M %Y-%m-%d')
     }, room=data['room'])
+
+@socketio.on('delete_message')
+def handle_delete_message(data):
+    msg = Message.query.get(data['id'])
+    if msg:
+        db.session.delete(msg)
+        db.session.commit()
+        emit('remove_message', {'id': msg.id}, room=data['room'])
 
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
