@@ -1,35 +1,34 @@
-import json
 import os
 import secrets
+import json
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")  # PostgreSQL
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB limit
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 app.secret_key = secrets.token_hex(16)
 
 db = SQLAlchemy(app)
 
 class Topic(db.Model):
-    id      = db.Column(db.Integer, primary_key=True)
-    slug    = db.Column(db.String(16), unique=True, nullable=False)
-    name    = db.Column(db.String(120), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(16), unique=True, nullable=False)
+    name = db.Column(db.String(120), nullable=False)
     created = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Message(db.Model):
-    id        = db.Column(db.Integer, primary_key=True)
-    topic_id  = db.Column(db.Integer, db.ForeignKey('topic.id'), nullable=False)
-    sender    = db.Column(db.String(30), nullable=False)
-    body      = db.Column(db.Text, nullable=False)
-    filename  = db.Column(db.String(255))  # optional uploaded file
-    created   = db.Column(db.DateTime, default=datetime.utcnow)
+    id = db.Column(db.Integer, primary_key=True)
+    topic_id = db.Column(db.Integer, db.ForeignKey('topic.id'), nullable=False)
+    sender = db.Column(db.String(30), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    filename = db.Column(db.String(255))
     reactions = db.Column(db.Text, default="{}")
-
+    created = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
     db.create_all()
@@ -72,8 +71,6 @@ def topic(slug):
 
     msgs = Message.query.filter_by(topic_id=topic.id).order_by(Message.created).all()
     return render_template('topic.html', topic=topic, msgs=msgs)
-
-import json  # at the top
 
 @app.route('/react/<int:msg_id>/<emoji>', methods=["POST"])
 def react(msg_id, emoji):
