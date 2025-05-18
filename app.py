@@ -31,8 +31,9 @@ class Message(db.Model):
     created = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
-    Message.__table__.drop(db.engine)  # Drops just the Message table
-    db.create_all()  # Recreates it with the new 'reactions' column
+    db.drop_all()  # Drop all tables
+    db.create_all()  # Recreate with updated schema
+
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
