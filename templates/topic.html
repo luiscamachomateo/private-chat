@@ -9,34 +9,26 @@
       <div class="header">
         <span class="who">{{ m.sender }}:</span>
         <span class="ts">{{ m.created.strftime('%H:%M %Y-%m-%d') }}</span>
-        {% if m.body or m.filename %}
-          <a class="del" href="{{ url_for('delete_message', id=m.id) }}" onclick="return confirm('Delete this message?')">❌</a>
-        {% endif %}
+        <a class="del" href="{{ url_for('delete_message', id=m.id) }}" onclick="return confirm('Delete this message?')">❌</a>
       </div>
       <div class="txt">{{ m.body|safe }}</div>
-      {% if m.filename %}
-        {% if m.filename.endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
-          <img src="{{ url_for('uploaded_file', filename=m.filename) }}" width="200">
-        {% else %}
-          <a href="{{ url_for('uploaded_file', filename=m.filename) }}" target="_blank">📎 {{ m.filename }}</a>
-        {% endif %}
+      {% if m.image_url %}
+        <img src="{{ m.image_url }}" width="200">
       {% endif %}
     </div>
   {% endfor %}
 </div>
 
-<!-- Text Message Form -->
 <form id="msgForm" class="send">
-    <input name="sender" id="sender" placeholder="Your name (optional)">
-    <textarea name="body" id="body" rows="3" placeholder="Type message…"></textarea>
-    <button type="submit">Send</button>
+  <input name="sender" id="sender" placeholder="Your name (optional)">
+  <textarea name="body" id="body" rows="3" placeholder="Type message…"></textarea>
+  <button type="submit">Send</button>
 </form>
 
-<!-- File Upload Form -->
-<form class="send" method="post" enctype="multipart/form-data" action="{{ url_for('upload_file', slug=topic.slug) }}">
-    <input name="sender" placeholder="Your name (optional)">
-    <input type="file" name="file" required>
-    <button type="submit">Upload File</button>
+<form id="uploadForm" class="send">
+  <input name="sender" id="imgSender" placeholder="Your name (optional)">
+  <input type="file" id="imageInput" name="file" accept="image/*" required>
+  <button type="submit">Upload Image</button>
 </form>
 
 <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
@@ -61,6 +53,34 @@
     }
   });
 
+  document.getElementById("uploadForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const fileInput = document.getElementById("imageInput");
+    const file = fileInput.files[0];
+    const sender = document.getElementById("imgSender").value;
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const res = await fetch("/upload_image", {
+      method: "POST",
+      body: formData
+    });
+
+    const result = await res.json();
+    if (result.url) {
+      socket.emit("send_message", {
+        room: room,
+        topic_id: topicId,
+        sender: sender,
+        image_url: result.url,
+        body: ""
+      });
+    }
+    fileInput.value = "";
+  });
+
   socket.on("new_message", data => {
     const box = document.getElementById("chatbox");
     const msg = document.createElement("div");
@@ -70,7 +90,8 @@
         <span class="who">${data.sender}:</span>
         <span class="ts">${data.time}</span>
       </div>
-      <div class="txt">${data.body}</div>
+      <div class="txt">${data.body || ''}</div>
+      ${data.image_url ? `<img src="${data.image_url}" width="200">` : ''}
     `;
     box.appendChild(msg);
     box.scrollTop = box.scrollHeight;
