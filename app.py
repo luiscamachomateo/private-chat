@@ -4,19 +4,23 @@ from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit, join_room
-from werkzeug.utils import secure_filename
+import cloudinary
+import cloudinary.uploader
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
-app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 app.secret_key = secrets.token_hex(16)
 
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.environ.get("CLOUDINARY_API_KEY"),
+    api_secret=os.environ.get("CLOUDINARY_API_SECRET")
+)
+
+PASSWORD = "letmein"
 db = SQLAlchemy(app)
 socketio = SocketIO(app, async_mode='eventlet')
-
-PASSWORD = "letmein"  # Set your login password
 
 class Topic(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -29,13 +33,11 @@ class Message(db.Model):
     topic_id = db.Column(db.Integer, db.ForeignKey('topic.id'), nullable=False)
     sender = db.Column(db.String(30), nullable=False)
     body = db.Column(db.Text, nullable=False)
-    filename = db.Column(db.String(255))
+    image_url = db.Column(db.String(500))
     created = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
     db.create_all()
-
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -64,7 +66,7 @@ def index():
     topics = Topic.query.order_by(Topic.created.desc()).all()
     return render_template('index.html', topics=topics)
 
-@app.route('/t/<slug>', methods=['GET', 'POST'])
+@app.route('/t/<slug>')
 def topic(slug):
     if not session.get("logged_in"):
         return redirect(url_for("login"))
@@ -77,11 +79,6 @@ def delete_message(id):
     if not session.get("logged_in"):
         return redirect(url_for("login"))
     msg = Message.query.get_or_404(id)
-    if msg.filename:
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], msg.filename))
-        except:
-            pass
     db.session.delete(msg)
     db.session.commit()
     return redirect(request.referrer)
@@ -93,38 +90,10 @@ def delete_topic(slug):
     topic = Topic.query.filter_by(slug=slug).first_or_404()
     messages = Message.query.filter_by(topic_id=topic.id).all()
     for msg in messages:
-        if msg.filename:
-            try:
-                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], msg.filename))
-            except:
-                pass
         db.session.delete(msg)
     db.session.delete(topic)
     db.session.commit()
     return redirect(url_for('index'))
-
-@app.route('/t/<slug>/upload', methods=['POST'])
-def upload_file(slug):
-    if not session.get("logged_in"):
-        return redirect(url_for("login"))
-    topic = Topic.query.filter_by(slug=slug).first_or_404()
-    sender = request.form.get('sender', 'Anonymous').strip()
-    file = request.files.get('file')
-    filename = None
-
-    if file and '.' in file.filename:
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        if ext in app.config['ALLOWED_EXTENSIONS']:
-            filename = secrets.token_hex(8) + '_' + secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            db.session.add(Message(topic_id=topic.id, sender=sender, body='', filename=filename))
-            db.session.commit()
-
-    return redirect(url_for('topic', slug=slug))
-
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @socketio.on('join')
 def handle_join(data):
@@ -134,16 +103,30 @@ def handle_join(data):
 def handle_send_message(data):
     topic_id = data['topic_id']
     sender = data['sender'].strip() or "Anonymous"
-    body = data['body'].strip()
-    if body:
-        msg = Message(topic_id=topic_id, sender=sender, body=body)
-        db.session.add(msg)
-        db.session.commit()
-        emit('new_message', {
-            'sender': sender,
-            'body': body,
-            'time': msg.created.strftime('%H:%M %Y-%m-%d')
-        }, room=data['room'])
+    body = data.get('body', '').strip()
+    image_url = data.get('image_url')
+
+    msg = Message(topic_id=topic_id, sender=sender, body=body, image_url=image_url)
+    db.session.add(msg)
+    db.session.commit()
+
+    emit('new_message', {
+        'sender': sender,
+        'body': body,
+        'image_url': image_url,
+        'time': msg.created.strftime('%H:%M %Y-%m-%d')
+    }, room=data['room'])
+
+@app.route('/upload_image', methods=['POST'])
+def upload_image():
+    if not session.get("logged_in"):
+        return "Unauthorized", 401
+
+    file = request.files['file']
+    if file:
+        upload_result = cloudinary.uploader.upload(file)
+        return {'url': upload_result['secure_url']}, 200
+    return {'error': 'Upload failed'}, 400
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000)
