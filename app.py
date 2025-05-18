@@ -129,13 +129,13 @@ def handle_delete_message(data):
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
     if not session.get("logged_in"):
-        return "Unauthorized", 401
-
+        return jsonify({'error': 'Unauthorized'}), 401
+        
     file = request.files['file']
     if file:
         upload_result = cloudinary.uploader.upload(file)
-        return {'url': upload_result['secure_url']}, 200
-    return {'error': 'Upload failed'}, 400
+        return jsonify({'url': upload_result['secure_url']}), 200
+    return jsonify({'error': 'Upload failed'}), 400
 
 if __name__ == "__main__":
     socketio.run(app, host="0.0.0.0", port=5000)
