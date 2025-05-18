@@ -3,18 +3,20 @@ import secrets
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, abort, session
 from flask_sqlalchemy import SQLAlchemy
+from flask_socketio import SocketIO, emit, join_room
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")  # PostgreSQL
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024  # 10MB
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 app.secret_key = secrets.token_hex(16)
 
-PASSWORD = "always_2bff"  # 🔐 Set your login password here
-
 db = SQLAlchemy(app)
+socketio = SocketIO(app, async_mode='eventlet')
+
+PASSWORD = "letmein"  # set your password
 
 class Topic(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -35,14 +37,10 @@ with app.app_context():
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        pw = request.form.get('password', '')
-        if pw == PASSWORD:
+        if request.form.get('password') == PASSWORD:
             session['logged_in'] = True
             return redirect(url_for('index'))
     return render_template('login.html')
@@ -66,65 +64,36 @@ def index():
     topics = Topic.query.order_by(Topic.created.desc()).all()
     return render_template('index.html', topics=topics)
 
-@app.route('/t/<slug>', methods=['GET', 'POST'])
+@app.route('/t/<slug>')
 def topic(slug):
     if not session.get("logged_in"):
         return redirect(url_for("login"))
-    topic = Topic.query.filter_by(slug=slug).first()
-    if not topic:
-        abort(404)
-    if request.method == 'POST':
-        sender = request.form.get('sender', 'Anonymous').strip()
-        body = request.form.get('body', '').strip()
-        file = request.files.get('file')
-        filename = None
-
-        if file and allowed_file(file.filename):
-            filename = secrets.token_hex(8) + '_' + secure_filename(file.filename)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-
-        if body or filename:
-            db.session.add(Message(topic_id=topic.id, sender=sender, body=body or '', filename=filename))
-            db.session.commit()
-            return redirect(url_for('topic', slug=slug))
-
+    topic = Topic.query.filter_by(slug=slug).first_or_404()
     msgs = Message.query.filter_by(topic_id=topic.id).order_by(Message.created).all()
     return render_template('topic.html', topic=topic, msgs=msgs)
 
-@app.route('/delete/message/<int:id>')
-def delete_message(id):
-    if not session.get("logged_in"):
-        return redirect(url_for("login"))
-    msg = Message.query.get_or_404(id)
-    if msg.filename:
-        try:
-            os.remove(os.path.join(app.config['UPLOAD_FOLDER'], msg.filename))
-        except:
-            pass
-    db.session.delete(msg)
-    db.session.commit()
-    return redirect(request.referrer)
+@socketio.on('join')
+def handle_join(data):
+    join_room(data['room'])
 
-@app.route('/delete/topic/<slug>')
-def delete_topic(slug):
-    if not session.get("logged_in"):
-        return redirect(url_for("login"))
-    topic = Topic.query.filter_by(slug=slug).first_or_404()
-    messages = Message.query.filter_by(topic_id=topic.id).all()
-    for msg in messages:
-        if msg.filename:
-            try:
-                os.remove(os.path.join(app.config['UPLOAD_FOLDER'], msg.filename))
-            except:
-                pass
-        db.session.delete(msg)
-    db.session.delete(topic)
-    db.session.commit()
-    return redirect(url_for('index'))
+@socketio.on('send_message')
+def handle_send_message(data):
+    topic_id = data['topic_id']
+    sender = data['sender'].strip() or "Anonymous"
+    body = data['body'].strip()
+    if body:
+        msg = Message(topic_id=topic_id, sender=sender, body=body)
+        db.session.add(msg)
+        db.session.commit()
+        emit('new_message', {
+            'sender': sender,
+            'body': body,
+            'time': msg.created.strftime('%H:%M %Y-%m-%d')
+        }, room=data['room'])
 
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    socketio.run(app, host="0.0.0.0", port=5000)
