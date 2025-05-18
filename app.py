@@ -36,7 +36,9 @@ class Message(db.Model):
     image_url = db.Column(db.String(500))
     created = db.Column(db.DateTime, default=datetime.utcnow)
 
+# 👇 One-time schema drop and recreate (destructive!)
 with app.app_context():
+    db.drop_all()
     db.create_all()
 
 @app.route('/login', methods=['GET', 'POST'])
