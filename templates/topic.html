@@ -1,32 +1,60 @@
 {% extends "base.html" %}
 {% block content %}
 <h2>{{ topic.name }}</h2>
-<a href="{{ url_for('delete_topic', slug=topic.slug) }}" onclick="return confirm('Delete this topic and all messages?')">🗑️ Delete topic</a>
 
-<div class="chatbox">
+<div class="chatbox" id="chatbox">
   {% for m in msgs %}
     <div class="msg">
-       <div class="header">
-         <span class="who">{{ m.sender }}:</span>
-         <span class="ts">{{ m.created.strftime('%H:%M %Y-%m-%d') }}</span>
-         <a class="del" href="{{ url_for('delete_message', id=m.id) }}" onclick="return confirm('Delete this message?')">❌</a>
-       </div>
-       <div class="txt">{{ m.body|safe }}</div>
-       {% if m.filename %}
-         {% if m.filename.endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
-            <img src="{{ url_for('uploaded_file', filename=m.filename) }}" width="200">
-         {% else %}
-            <a href="{{ url_for('uploaded_file', filename=m.filename) }}" target="_blank">📎 {{ m.filename }}</a>
-         {% endif %}
-       {% endif %}
+      <div class="header">
+        <span class="who">{{ m.sender }}:</span>
+        <span class="ts">{{ m.created.strftime('%H:%M %Y-%m-%d') }}</span>
+      </div>
+      <div class="txt">{{ m.body|safe }}</div>
     </div>
   {% endfor %}
 </div>
 
-<form class="send" method="post" enctype="multipart/form-data">
-    <input name="sender" placeholder="Your name (optional)">
-    <textarea name="body" rows="3" placeholder="Type message…"></textarea>
-    <input type="file" name="file">
-    <button>Send</button>
+<form id="msgForm" class="send">
+    <input name="sender" id="sender" placeholder="Your name (optional)">
+    <textarea name="body" id="body" rows="3" placeholder="Type message…"></textarea>
+    <button type="submit">Send</button>
 </form>
+
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<script>
+  const socket = io();
+  const room = "{{ topic.slug }}";
+  const topicId = {{ topic.id }};
+  socket.emit("join", { room });
+
+  document.getElementById("msgForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const sender = document.getElementById("sender").value;
+    const body = document.getElementById("body").value;
+    if (body.trim()) {
+      socket.emit("send_message", {
+        room: room,
+        topic_id: topicId,
+        sender: sender,
+        body: body
+      });
+      document.getElementById("body").value = "";
+    }
+  });
+
+  socket.on("new_message", data => {
+    const box = document.getElementById("chatbox");
+    const msg = document.createElement("div");
+    msg.className = "msg";
+    msg.innerHTML = `
+      <div class="header">
+        <span class="who">${data.sender}:</span>
+        <span class="ts">${data.time}</span>
+      </div>
+      <div class="txt">${data.body}</div>
+    `;
+    box.appendChild(msg);
+    box.scrollTop = box.scrollHeight;
+  });
+</script>
 {% endblock %}
