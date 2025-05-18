@@ -82,19 +82,28 @@
   });
 
   socket.on("new_message", data => {
-    const box = document.getElementById("chatbox");
-    const msg = document.createElement("div");
-    msg.className = "msg";
-    msg.innerHTML = `
-      <div class="header">
-        <span class="who">${data.sender}:</span>
-        <span class="ts">${data.time}</span>
-      </div>
-      <div class="txt">${data.body || ''}</div>
-      ${data.image_url ? `<img src="${data.image_url}" width="200">` : ''}
-    `;
-    box.appendChild(msg);
-    box.scrollTop = box.scrollHeight;
-  });
-</script>
-{% endblock %}
+  const box = document.getElementById("chatbox");
+  const msg = document.createElement("div");
+  msg.className = "msg";
+  msg.id = `msg-${data.id}`;
+  msg.innerHTML = `
+    <div class="header">
+      <span class="who">${data.sender}:</span>
+      <span class="ts">${data.time}</span>
+      <a class="del" onclick="deleteMessage(${data.id})">❌</a>
+    </div>
+    <div class="txt">${data.body || ''}</div>
+    ${data.image_url ? `<img src="${data.image_url}" width="200">` : ''}
+  `;
+  box.appendChild(msg);
+  box.scrollTop = box.scrollHeight;
+});
+
+socket.on("message_deleted", data => {
+  const el = document.getElementById(`msg-${data.id}`);
+  if (el) el.remove();
+});
+
+function deleteMessage(id) {
+  socket.emit("delete_message", { id: id, room: room });
+}
