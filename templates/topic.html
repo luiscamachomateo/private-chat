@@ -107,3 +107,7 @@ socket.on("message_deleted", data => {
 function deleteMessage(id) {
   socket.emit("delete_message", { id: id, room: room });
 }
+
+</script>
+{% endblock %}
+  
