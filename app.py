@@ -64,7 +64,7 @@ def index():
     topics = Topic.query.order_by(Topic.created.desc()).all()
     return render_template('index.html', topics=topics)
 
-@app.route('/t/<slug>')
+@app.route('/t/<slug>', methods=['GET', 'POST'])
 def topic(slug):
     if not session.get("logged_in"):
         return redirect(url_for("login"))
