@@ -30,10 +30,6 @@ class Message(db.Model):
     reactions = db.Column(db.Text, default="{}")
     created = db.Column(db.DateTime, default=datetime.utcnow)
 
-with app.app_context():
-    db.drop_all()  # Drop all tables
-    db.create_all()  # Recreate with updated schema
-
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
