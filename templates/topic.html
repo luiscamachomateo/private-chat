@@ -6,27 +6,52 @@
 <div class="chatbox">
   {% for m in msgs %}
     <div class="msg">
-       <div class="header">
-         <span class="who">{{ m.sender }}:</span>
-         <span class="ts">{{ m.created.strftime('%H:%M %Y-%m-%d') }}</span>
-         <a class="del" href="{{ url_for('delete_message', id=m.id) }}" onclick="return confirm('Delete this message?')">❌</a>
-       </div>
-       <div class="txt">{{ m.body|safe }}</div>
-       {% if m.filename %}
-         {% if m.filename.endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
-            <img src="{{ url_for('uploaded_file', filename=m.filename) }}" width="200">
-         {% else %}
-            <a href="{{ url_for('uploaded_file', filename=m.filename) }}" target="_blank">📎 {{ m.filename }}</a>
-         {% endif %}
-       {% endif %}
+      <div class="header">
+        <span class="who">{{ m.sender }}:</span>
+        <span class="ts">{{ m.created.strftime('%H:%M %Y-%m-%d') }}</span>
+        <a class="del" href="{{ url_for('delete_message', id=m.id) }}" onclick="return confirm('Delete this message?')">❌</a>
+      </div>
+      <div class="txt">{{ m.body|safe }}</div>
+
+      {% if m.filename %}
+        {% if m.filename.endswith(('.png', '.jpg', '.jpeg', '.gif')) %}
+          <img src="{{ url_for('uploaded_file', filename=m.filename) }}" width="200">
+        {% else %}
+          <a href="{{ url_for('uploaded_file', filename=m.filename) }}" target="_blank">📎 {{ m.filename }}</a>
+        {% endif %}
+      {% endif %}
+
+      {% if m.reactions %}
+        <div class="reactions">
+          {% for emoji, count in m.reactions | safe | fromjson.items() %}
+            <span class="reaction">{{ emoji }} {{ count }}</span>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <button class="show-emoji" onclick="toggleEmoji({{ m.id }})">➕</button>
+      <div class="emoji-picker" id="emoji-{{ m.id }}">
+        {% for e in ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😍','😘','😎','🤓','😡','😭','😱','👍','👎','❤️','🔥','💯','🎉','😴','🤔','🙈','💩'] %}
+          <form method="post" action="{{ url_for('react', msg_id=m.id, emoji=e) }}">
+            <button type="submit" class="emoji-btn">{{ e }}</button>
+          </form>
+        {% endfor %}
+      </div>
     </div>
   {% endfor %}
 </div>
 
 <form class="send" method="post" enctype="multipart/form-data">
-    <input name="sender" placeholder="Your name (optional)">
-    <textarea name="body" rows="3" placeholder="Type message…"></textarea>
-    <input type="file" name="file">
-    <button>Send</button>
+  <input name="sender" placeholder="Your name (optional)">
+  <textarea name="body" rows="3" placeholder="Type message…"></textarea>
+  <input type="file" name="file">
+  <button>Send</button>
 </form>
+
+<script>
+  function toggleEmoji(id) {
+    const el = document.getElementById('emoji-' + id);
+    el.style.display = el.style.display === 'block' ? 'none' : 'block';
+  }
+</script>
 {% endblock %}
