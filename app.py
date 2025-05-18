@@ -124,7 +124,7 @@ def handle_delete_message(data):
     if msg:
         db.session.delete(msg)
         db.session.commit()
-        emit('remove_message', {'id': msg.id}, room=data['room'])
+        emit('message_deleted', {'id': msg.id}, room=data['room'])
 
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
