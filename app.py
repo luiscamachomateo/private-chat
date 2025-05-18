@@ -1,3 +1,4 @@
+import json
 import os
 import secrets
 from datetime import datetime
@@ -27,6 +28,8 @@ class Message(db.Model):
     body      = db.Column(db.Text, nullable=False)
     filename  = db.Column(db.String(255))  # optional uploaded file
     created   = db.Column(db.DateTime, default=datetime.utcnow)
+    reactions = db.Column(db.Text, default="{}")
+
 
 with app.app_context():
     db.create_all()
@@ -69,6 +72,17 @@ def topic(slug):
 
     msgs = Message.query.filter_by(topic_id=topic.id).order_by(Message.created).all()
     return render_template('topic.html', topic=topic, msgs=msgs)
+
+import json  # at the top
+
+@app.route('/react/<int:msg_id>/<emoji>', methods=["POST"])
+def react(msg_id, emoji):
+    msg = Message.query.get_or_404(msg_id)
+    current = json.loads(msg.reactions or "{}")
+    current[emoji] = current.get(emoji, 0) + 1
+    msg.reactions = json.dumps(current)
+    db.session.commit()
+    return redirect(request.referrer or url_for('index'))
 
 @app.route('/delete/message/<int:id>')
 def delete_message(id):
